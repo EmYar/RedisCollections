@@ -68,11 +68,11 @@ class StringRedisMap(private val jedis: Jedis) : MutableMap<String, Int> {
         jedis.exists(key)
 
     override fun remove(key: String, value: Int): Boolean =
-        jedis.get(key).toInt() == value &&
+        jedis.get(key).nilAsNull()?.toInt() == value &&
                 jedis.del(key) == 1L
 
     override fun replace(key: String, oldValue: Int, newValue: Int): Boolean =
-        if (jedis.get(key).toInt() == oldValue) {
+        if (jedis.get(key).nilAsNull()?.toInt() == oldValue) {
             jedis.set(key, newValue.toString())
             true
         } else {
@@ -81,7 +81,9 @@ class StringRedisMap(private val jedis: Jedis) : MutableMap<String, Int> {
 
     override fun replace(key: String, value: Int): Int? =
         if (jedis.exists(key)) {
-            jedis.getSet(key, value.toString()).toInt()
+            jedis.getSet(key, value.toString())
+                .nilAsNull()
+                ?.toInt()
         } else {
             null
         }
