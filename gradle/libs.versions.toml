@@ -1,0 +1,9 @@
+[versions]
+jedisVersion = "5.0.2"
+testContainersVersion = "1.20.3"
+testContainersRedisVersion = "2.2.2"
+
+[libraries]
+jedis = { group = "redis.clients", name = "jedis", version.ref = "jedisVersion" }
+testContainers = { group = "org.testcontainers", name = "testcontainers", version.ref = "testContainersVersion" }
+testContainersRedis = { group = "com.redis", name = "testcontainers-redis", version.ref = "testContainersRedisVersion" }
