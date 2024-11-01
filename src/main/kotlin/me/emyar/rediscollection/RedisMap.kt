@@ -9,9 +9,15 @@ private const val CHUNK_SIZE = 1000
 class StringRedisMap(private val jedis: Jedis) : MutableMap<String, Int> {
 
     override val entries: MutableSet<MutableMap.MutableEntry<String, Int>>
-        get() = keys.asSequence()
-            .zip(values.asSequence()) { key, value -> Entry(key, value, jedis) }
-            .toMutableSet()
+        get() =
+            keys.let { keys ->
+                keys.asSequence()
+                    .zip(jedis.mget(*keys.toTypedArray()).asSequence()) { key, value ->
+                        Entry(key, value.toInt(), jedis)
+                    }
+                    .toMutableSet()
+
+            }
 
     override val keys: MutableSet<String>
         get() = jedis.keys("*")
@@ -37,9 +43,9 @@ class StringRedisMap(private val jedis: Jedis) : MutableMap<String, Int> {
 
     override fun putAll(from: Map<out String, Int>) {
         val keysvalues = ArrayList<String>(from.size * 2)
-        from.forEach {
-            keysvalues += it.key
-            keysvalues += it.value.toString()
+        from.forEach { (key, value) ->
+            keysvalues += key
+            keysvalues += value.toString()
         }
         jedis.mset(*keysvalues.toTypedArray())
     }
@@ -92,13 +98,13 @@ class StringRedisMap(private val jedis: Jedis) : MutableMap<String, Int> {
         keys.asSequence()
             .chunked(CHUNK_SIZE)
             .forEach { keysChunk ->
-                val values = jedis.mget(*keysChunk.toTypedArray())
-                    .map(String::toInt)
                 val keysvalues = ArrayList<String>(keysChunk.size * 2)
-                keysChunk.forEachIndexed { i, key ->
-                    keysvalues += key
-                    keysvalues += function.apply(key, values[i]).toString()
-                }
+                jedis.mget(*keysChunk.toTypedArray())
+                    .forEachIndexed { i, value ->
+                        val key = keysChunk[i]
+                        keysvalues += key
+                        keysvalues += function.apply(key, value.toInt()).toString()
+                    }
                 jedis.mset(*keysvalues.toTypedArray())
             }
     }
@@ -110,11 +116,8 @@ class StringRedisMap(private val jedis: Jedis) : MutableMap<String, Int> {
         keys.asSequence()
             .chunked(CHUNK_SIZE)
             .forEach { keysChunk ->
-                val values = jedis.mget(*keysChunk.toTypedArray())
-                    .map(String::toInt)
-                keysChunk.forEachIndexed { i, key ->
-                    action.accept(key, values[i])
-                }
+                jedis.mget(*keysChunk.toTypedArray())
+                    .forEachIndexed { i, value -> action.accept(keysChunk[i], value.toInt()) }
             }
     }
 }
