@@ -16,16 +16,14 @@ repositories {
 }
 
 dependencies {
-    implementation("org.springframework.boot:spring-boot-starter-data-redis")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation(libs.jedis)
 
-    testImplementation("org.springframework.boot:spring-boot-starter-test")
-    testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
+    testImplementation(kotlin("test"))
+    testImplementation(libs.kotest)
     testImplementation(libs.testContainers)
+    testImplementation(libs.testContainersJunit)
     testImplementation(libs.testContainersRedis)
-
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
 kotlin {

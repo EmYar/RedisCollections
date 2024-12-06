@@ -8,7 +8,7 @@ import java.util.Collection as JvmCollection
 abstract class AbstractRedisList<T>(
     private val jedis: Jedis,
     private val key: String,
-) : AbstractList<T>(), MutableList<T>, RandomAccess {
+) : AbstractList<T>(), RandomAccess {
 
     protected abstract fun T.serialize(): String
     protected abstract fun String.deserialize(): T
@@ -22,18 +22,9 @@ abstract class AbstractRedisList<T>(
             .deserialize()
     }
 
-    override fun getFirst(): T? =
-        jedis.lindex(key, 0)
-            ?.deserialize()
-
-    override fun getLast(): T? =
-        jedis.lindex(key, -1)
-            ?.deserialize()
-
     override fun set(index: Int, element: T): T {
         checkBounds(index)
         val oldValue = jedis.lindex(key, index.toLong())
-            .nilAsNull()
             ?.deserialize()
         jedis.lset(key, index.toLong(), element.serialize())
         registerModification()
@@ -53,9 +44,9 @@ abstract class AbstractRedisList<T>(
         registerModification()
     }
 
-    override fun addAll(c: Collection<T>): Boolean {
+    override fun addAll(elements: Collection<T>): Boolean {
         registerModification()
-        jedis.rpush(key, *c.map { it.serialize() }.toTypedArray())
+        jedis.rpush(key, *elements.map { it.serialize() }.toTypedArray())
         return true
     }
 
@@ -82,9 +73,9 @@ abstract class AbstractRedisList<T>(
         jedis.rpush(key, e?.serialize())
     }
 
-    override fun remove(o: T): Boolean {
+    override fun remove(element: T): Boolean {
         registerModification()
-        jedis.lrem(key, 1, o.serialize())
+        jedis.lrem(key, 1, element.serialize())
         return true
     }
 
@@ -118,8 +109,8 @@ abstract class AbstractRedisList<T>(
             ?.toInt()
             ?: -1
 
-    override fun contains(o: T?): Boolean =
-        indexOf(o) >= 0
+    override fun contains(element: T?): Boolean =
+        indexOf(element) >= 0
 
     override fun clear() {
         if (isNotEmpty()) {
@@ -142,13 +133,13 @@ abstract class AbstractRedisList<T>(
         }
     }
 
-    @Suppress("UNCHECKED_CAST")
+    @Suppress("PLATFORM_CLASS_MAPPED_TO_KOTLIN")
     override fun toArray(): Array<out Any?> =
         (jedis.lrange(key, 0L, size.toLong())
             .map { it.deserialize() } as JvmCollection<out Any?>)
             .toArray()
 
-    @Suppress("UNCHECKED_CAST")
+    @Suppress("UNCHECKED_CAST", "PLATFORM_CLASS_MAPPED_TO_KOTLIN")
     override fun <T : Any?> toArray(a: Array<out T?>): Array<out T?> =
         (jedis.lrange(key, 0L, size.toLong())
             .map { it.deserialize() } as JvmCollection<out T?>)
