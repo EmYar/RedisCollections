@@ -1,6 +1,6 @@
 [versions]
 jedisVersion = "5.0.2"
-testContainersVersion = "1.20.3"
+testContainersVersion = "1.20.4"
 testContainersRedisVersion = "2.2.2"
 
 [libraries]

@@ -1,8 +1,5 @@
 plugins {
-    kotlin("jvm") version "2.0.21"
-    kotlin("plugin.spring") version "2.0.21"
-    id("org.springframework.boot") version "3.3.4"
-    id("io.spring.dependency-management") version "1.1.6"
+    kotlin("jvm") version "2.1.0"
 }
 
 group = "me.emyar"
@@ -39,7 +36,7 @@ kotlin {
 
 tasks {
     wrapper {
-        gradleVersion = "8.10.2"
+        gradleVersion = "8.11.1"
     }
 
     test {
