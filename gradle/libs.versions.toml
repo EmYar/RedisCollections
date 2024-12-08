@@ -1,12 +1,14 @@
 [versions]
 jedisVersion = "5.0.2"
 kotestVersion = "6.0.0.M1"
+junitVersion = "5.11.0"
 testContainersVersion = "1.20.4"
 testContainersRedisVersion = "2.2.2"
 
 [libraries]
 jedis = { group = "redis.clients", name = "jedis", version.ref = "jedisVersion" }
 kotest = { group = "io.kotest", name = "kotest-runner-junit5", version.ref = "kotestVersion" }
+junitParams = { group = "org.junit.jupiter", name = "junit-jupiter-params", version.ref = "junitVersion" }
 testContainers = { group = "org.testcontainers", name = "testcontainers", version.ref = "testContainersVersion" }
 testContainersJunit = { group = "org.testcontainers", name = "junit-jupiter", version.ref = "testContainersVersion" }
 testContainersRedis = { group = "com.redis", name = "testcontainers-redis", version.ref = "testContainersRedisVersion" }

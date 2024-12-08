@@ -1,11 +1,16 @@
 package me.emyar.rediscollection
 
 import com.redis.testcontainers.RedisContainer
+import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldContainExactly
+import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.FieldSource
 import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
 import org.testcontainers.utility.DockerImageName
@@ -30,10 +35,53 @@ class StringRedisListTests {
         jedis.del(key)
     }
 
+    @ParameterizedTest
+    @FieldSource("testList")
+    fun contains(element: String) {
+        StringRedisList(jedis, key) shouldContain element
+    }
+
     @Test
-    fun iterate() {
-        val redisList = StringRedisList(jedis, key)
-        redisList shouldContainExactly testList
+    fun isEmpty() {
+        val emptyListKey = Uuid.random().toString()
+        StringRedisList(jedis, emptyListKey).isEmpty() shouldBe true
+    }
+
+    @Test
+    fun isNotEmpty() {
+        StringRedisList(jedis, key).isEmpty() shouldBe false
+    }
+
+    @Test
+    fun iterator() {
+        StringRedisList(jedis, key) shouldContainExactly testList
+    }
+
+    @Test
+    fun size() {
+        StringRedisList(jedis, key) shouldHaveSize testList.size
+    }
+
+    @ParameterizedTest
+    @FieldSource("testList")
+    fun get(element: String) {
+        val elementIndex = testList.indexOf(element)
+        StringRedisList(jedis, key)[elementIndex] shouldBe element
+    }
+
+    @ParameterizedTest
+    @FieldSource("testList")
+    fun indexOf(element: String) {
+        StringRedisList(jedis, key).indexOf(element) shouldBe testList.indexOf(element)
+    }
+
+    @ParameterizedTest
+    @FieldSource("testList")
+    fun lastIndexOf(element: String) {
+        val key = Uuid.random().toString()
+        val list = testList + element
+        jedis.rpush(key, *list.toTypedArray())
+        StringRedisList(jedis, key).lastIndexOf(element) shouldBe list.lastIndexOf(element)
     }
 
     companion object {
@@ -43,6 +91,7 @@ class StringRedisListTests {
 
         private lateinit var jedis: Jedis
 
+        @JvmStatic
         private val testList = listOf("Cat", "Dog", "Home", "Garage")
 
         @JvmStatic
