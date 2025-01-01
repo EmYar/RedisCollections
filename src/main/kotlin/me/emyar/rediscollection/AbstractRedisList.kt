@@ -40,8 +40,7 @@ abstract class AbstractRedisList<T>(
 
     override fun add(index: Int, element: T) {
         checkBounds(index)
-        jedis.lset(key, index.toLong(), element.serialize())
-        registerModification()
+        addAll(index, listOf(element))
     }
 
     override fun addAll(elements: Collection<T>): Boolean {
@@ -57,7 +56,7 @@ abstract class AbstractRedisList<T>(
             index == 0 && size == 0 -> return addAll(elements)
             index < 0 || index >= size -> throw IndexOutOfBoundsException("Index: $index")
         }
-        val tail = jedis.rpop(key, size - index)
+        val tail = jedis.rpop(key, size - index).reversed() // TODO
         jedis.rpush(key, *elements.map { it.serialize() }.toTypedArray())
         jedis.rpush(key, *tail.toTypedArray())
         return true
@@ -148,7 +147,7 @@ abstract class AbstractRedisList<T>(
     private fun removeLeft(index: Int): T {
         val head = jedis.lpop(key, index)
         val removed = jedis.lpop(key)
-        jedis.lpush(key, *head.toTypedArray())
+        jedis.lpush(key, *head.reversed().toTypedArray()) // TODO
         registerModification()
         return removed.deserialize()
     }
