@@ -51,7 +51,9 @@ class StringRedisListTests {
 
     @Test
     fun set() {
-        // TODO
+        val expectedList = testList.toMutableList().also { it[1] = "newElement" }
+        val redisList = StringRedisList(jedis, key).also { it[1] = "newElement" }
+        redisList shouldBe expectedList
     }
 
     @Test
