@@ -1,3 +1,5 @@
+@file:Suppress("PLATFORM_CLASS_MAPPED_TO_KOTLIN")
+
 package me.emyar.rediscollection
 
 import redis.clients.jedis.Jedis
@@ -5,110 +7,102 @@ import redis.clients.jedis.params.LPosParams
 import java.util.*
 import java.util.Collection as JvmCollection
 
-abstract class AbstractRedisList<T>(
+class StringRedisList(
     private val jedis: Jedis,
     private val key: String,
-) : AbstractList<T>(), RandomAccess {
-
-    protected abstract fun T.serialize(): String
-    protected abstract fun String.deserialize(): T
+) : AbstractList<String>(), RandomAccess {
 
     override val size: Int
         get() = jedis.llen(key).toInt()
 
-    override fun get(index: Int): T {
+    override fun get(index: Int): String {
         checkBounds(index)
         return jedis.lindex(key, index.toLong())
-            .deserialize()
     }
 
-    override fun set(index: Int, element: T): T {
+    override fun set(index: Int, element: String): String {
         checkBounds(index)
         val oldValue = jedis.lindex(key, index.toLong())
-            ?.deserialize()
-        jedis.lset(key, index.toLong(), element.serialize())
+        jedis.lset(key, index.toLong(), element)
         registerModification()
-        @Suppress("UNCHECKED_CAST")
-        return oldValue as T
+        return oldValue
     }
 
-    override fun add(element: T): Boolean {
-        jedis.rpush(key, element.serialize())
+    override fun add(element: String): Boolean {
+        jedis.rpush(key, element)
         registerModification()
         return true
     }
 
-    override fun add(index: Int, element: T) {
+    override fun add(index: Int, element: String) {
         checkBounds(index)
         addAll(index, listOf(element))
     }
 
-    override fun addAll(elements: Collection<T>): Boolean {
+    override fun addAll(elements: Collection<String>): Boolean {
         registerModification()
-        jedis.rpush(key, *elements.map { it.serialize() }.toTypedArray())
+        jedis.rpush(key, *elements.toTypedArray())
         return true
     }
 
-    override fun addAll(index: Int, elements: Collection<T>): Boolean {
+    override fun addAll(index: Int, elements: Collection<String>): Boolean {
         val size = size
         registerModification()
         when {
             index == 0 && size == 0 -> return addAll(elements)
             index < 0 || index >= size -> throw IndexOutOfBoundsException("Index: $index")
         }
-        val tail = jedis.rpop(key, size - index).reversed() // TODO
-        jedis.rpush(key, *elements.map { it.serialize() }.toTypedArray())
+        val tail = jedis.rpop(key, size - index).reversed()
+        jedis.rpush(key, *elements.toTypedArray())
         jedis.rpush(key, *tail.toTypedArray())
         return true
     }
 
-    override fun addFirst(e: T) {
+    override fun addFirst(e: String) {
         registerModification()
-        jedis.lpush(key, e?.serialize())
+        jedis.lpush(key, e)
     }
 
-    override fun addLast(e: T) {
+    override fun addLast(e: String) {
         registerModification()
-        jedis.rpush(key, e?.serialize())
+        jedis.rpush(key, e)
     }
 
-    override fun remove(element: T): Boolean {
+    override fun remove(element: String): Boolean {
         registerModification()
-        jedis.lrem(key, 1, element.serialize())
+        jedis.lrem(key, 1, element)
         return true
     }
 
-    override fun removeAt(index: Int): T {
+    override fun removeAt(index: Int): String {
         checkBounds(index)
         val size = size
         return when {
-            index == 0 -> jedis.lpop(key).deserialize()
-            index == size - 1 -> jedis.rpop(key).deserialize()
+            index == 0 -> jedis.lpop(key)
+            index == size - 1 -> jedis.rpop(key)
             index <= size / 2 -> removeLeft(index)
             else -> removeRight(index)
         }.also { registerModification() }
     }
 
-    override fun removeLast(): T =
+    override fun removeLast(): String =
         jedis.rpop(key)
-            .deserialize()
             .also { registerModification() }
 
-    override fun removeFirst(): T =
+    override fun removeFirst(): String =
         jedis.lpop(key)
-            .deserialize()
             .also { registerModification() }
 
-    override fun indexOf(element: T): Int =
-        jedis.lpos(key, element.serialize())?.toInt()
+    override fun indexOf(element: String): Int =
+        jedis.lpos(key, element)?.toInt()
             ?: -1
 
-    override fun lastIndexOf(element: T): Int =
-        jedis.lpos(key, element.serialize(), LPosParams().rank(-1))
+    override fun lastIndexOf(element: String): Int =
+        jedis.lpos(key, element, LPosParams().rank(-1))
             ?.toInt()
             ?: -1
 
-    override fun contains(element: T?): Boolean =
+    override fun contains(element: String?): Boolean =
         indexOf(element) >= 0
 
     override fun clear() {
@@ -118,46 +112,42 @@ abstract class AbstractRedisList<T>(
         }
     }
 
-    override fun sort(c: Comparator<in T>?) {
+    override fun sort(c: Comparator<in String>?) {
         registerModification()
         if (c == null) {
             jedis.sort(key)
         } else {
-            val values = jedis.lrange(key, 0, -1).asSequence()
-                .map { it.deserialize() }
-                .toMutableList()
+            val values = jedis.lrange(key, 0, -1).toMutableList()
             jedis.del(key)
             values.sortWith(c)
-            jedis.rpush(key, *values.map { it.serialize() }.toTypedArray())
+            jedis.rpush(key, *values.toTypedArray())
         }
     }
 
     @Suppress("PLATFORM_CLASS_MAPPED_TO_KOTLIN")
     override fun toArray(): Array<out Any?> =
-        (jedis.lrange(key, 0L, size.toLong())
-            .map { it.deserialize() } as JvmCollection<out Any?>)
+        (jedis.lrange(key, 0L, size.toLong()) as JvmCollection<out Any?>)
             .toArray()
 
     @Suppress("UNCHECKED_CAST", "PLATFORM_CLASS_MAPPED_TO_KOTLIN")
     override fun <T : Any?> toArray(a: Array<out T?>): Array<out T?> =
-        (jedis.lrange(key, 0L, size.toLong())
-            .map { it.deserialize() } as JvmCollection<out T?>)
+        (jedis.lrange(key, 0L, size.toLong()) as JvmCollection<out T?>)
             .toArray(a)
 
-    private fun removeLeft(index: Int): T {
+    private fun removeLeft(index: Int): String {
         val head = jedis.lpop(key, index)
         val removed = jedis.lpop(key)
-        jedis.lpush(key, *head.reversed().toTypedArray()) // TODO
+        jedis.lpush(key, *head.reversed().toTypedArray())
         registerModification()
-        return removed.deserialize()
+        return removed
     }
 
-    private fun removeRight(index: Int): T {
+    private fun removeRight(index: Int): String {
         val tail = jedis.rpop(key, size - 1 - index)
         val removed = jedis.rpop(key)
-        jedis.rpush(key, *tail.toTypedArray())
+        jedis.rpush(key, *tail.reversed().toTypedArray())
         registerModification()
-        return removed.deserialize()
+        return removed
     }
 
     private fun checkBounds(index: Int) {

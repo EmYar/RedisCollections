@@ -223,7 +223,7 @@ class StringRedisListTests {
         private val jedis = Jedis(redisContainer.redisHost, redisContainer.redisPort)
 
         @JvmStatic
-        private val testList = listOf("Cat", "Dog", "Home", "Garage", "Lawn")
+        private val testList = listOf("Cat", "Dog", "Home", "Garage", "Lawn", "Fence", "Roof")
 
         @JvmStatic
         @AfterAll
