@@ -153,7 +153,7 @@ class StringByIntRedisMap(
             this@StringByIntRedisMap.containsValue(element)
 
         override fun toArray(): Array<Any> =
-            jedis.hvals(redisKey).toTypedArray()
+            jedis.hvals(redisKey).map(String::toInt).toTypedArray()
 
         @Suppress("UNCHECKED_CAST")
         override fun <T> toArray(a: Array<T>): Array<T> =

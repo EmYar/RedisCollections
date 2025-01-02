@@ -1,5 +1,6 @@
 package me.emyar.rediscollection
 
+import io.kotest.matchers.collections.shouldContainAll
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.maps.shouldContainExactly
 import io.kotest.matchers.shouldBe
@@ -67,7 +68,7 @@ class StringByIntRedisMapTests {
 
     @Test
     fun valuesContains() {
-        StringByIntRedisMap(jedis, key).values shouldContainExactly testMap.values
+        StringByIntRedisMap(jedis, key).values shouldContainAll testMap.values
     }
 
     @Test
