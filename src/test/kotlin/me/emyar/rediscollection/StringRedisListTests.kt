@@ -1,27 +1,18 @@
 package me.emyar.rediscollection
 
-import com.redis.testcontainers.RedisContainer
-import io.kotest.matchers.collections.shouldBeEmpty
-import io.kotest.matchers.collections.shouldContain
-import io.kotest.matchers.collections.shouldContainExactly
-import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.collections.*
 import io.kotest.matchers.equals.shouldBeEqual
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.FieldSource
-import org.testcontainers.junit.jupiter.Container
-import org.testcontainers.junit.jupiter.Testcontainers
-import org.testcontainers.utility.DockerImageName
 import redis.clients.jedis.Jedis
 import kotlin.test.Test
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
-@Testcontainers
 @OptIn(ExperimentalUuidApi::class)
 class StringRedisListTests {
 
@@ -162,6 +153,11 @@ class StringRedisListTests {
     }
 
     @Test
+    fun notContains() {
+        StringRedisList(jedis, key) shouldNotContain null
+    }
+
+    @Test
     fun containsAll() {
         StringRedisList(jedis, key).containsAll(testList) shouldBe true
     }
@@ -224,20 +220,10 @@ class StringRedisListTests {
     }
 
     companion object {
-        @JvmStatic
-        @Container
-        private val redisContainer = RedisContainer(DockerImageName.parse("redis:6.2.6"))
-
-        private lateinit var jedis: Jedis
+        private val jedis = Jedis(redisContainer.redisHost, redisContainer.redisPort)
 
         @JvmStatic
         private val testList = listOf("Cat", "Dog", "Home", "Garage", "Lawn")
-
-        @JvmStatic
-        @BeforeAll
-        fun beforeAll() {
-            jedis = Jedis(redisContainer.redisHost, redisContainer.redisPort)
-        }
 
         @JvmStatic
         @AfterAll

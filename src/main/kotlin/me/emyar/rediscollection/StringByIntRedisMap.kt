@@ -75,18 +75,37 @@ class StringByIntRedisMap(
         }
     }
 
-    inner class Node(
+    class Node(
+        private val map: StringByIntRedisMap,
         override val key: String,
     ) : MutableMap.MutableEntry<String, Int> {
 
         override val value: Int
-            get() = get(key)!!
+            get() = map[key]!!
 
         override fun setValue(newValue: Int): Int =
-            put(key, newValue)!!
+            map.put(key, newValue)!!
+
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (javaClass != other?.javaClass) return false
+
+            other as Node
+
+            if (value != other.value) return false
+            if (key != other.key) return false
+
+            return true
+        }
+
+        override fun hashCode(): Int {
+            var result = value
+            result = 31 * result + key.hashCode()
+            return result
+        }
     }
 
-    inner class KeySet : AbstractSet<String>(), MutableSet<String> {
+    private inner class KeySet : AbstractSet<String>(), MutableSet<String> {
 
         override val size: Int
             get() = this@StringByIntRedisMap.size
@@ -119,7 +138,7 @@ class StringByIntRedisMap(
         }
     }
 
-    inner class Values : AbstractCollection<Int>(), MutableCollection<Int> {
+    private inner class Values : AbstractCollection<Int>(), MutableCollection<Int> {
 
         override val size: Int
             get() = this@StringByIntRedisMap.size
@@ -150,7 +169,7 @@ class StringByIntRedisMap(
         }
     }
 
-    open inner class RedisMapIterator {
+    private open inner class RedisMapIterator {
         private var current: Node? = null
         private var expectedModCount: Int = modCount
         private val cachedKeysIterator = jedis.hkeys(redisKey).iterator()
@@ -162,7 +181,7 @@ class StringByIntRedisMap(
                 throw ConcurrentModificationException()
             }
             val key = cachedKeysIterator.next()
-            val toReturn = Node(key)
+            val toReturn = Node(this@StringByIntRedisMap, key)
             current = toReturn
             return toReturn
         }
@@ -192,7 +211,7 @@ class StringByIntRedisMap(
             EntryIterator()
 
         override fun contains(element: MutableMap.MutableEntry<String, Int>): Boolean =
-            Node(element.key) == element
+            Node(this@StringByIntRedisMap, element.key) == element
 
         override fun remove(element: MutableMap.MutableEntry<String, Int>): Boolean =
             this@StringByIntRedisMap.remove(element.key, element.value)
@@ -200,21 +219,21 @@ class StringByIntRedisMap(
         override fun forEach(action: Consumer<in MutableMap.MutableEntry<String, Int>>) {
             val mc = modCount
             for (key in jedis.hkeys(redisKey)) {
-                action.accept(Node(key))
+                action.accept(Node(this@StringByIntRedisMap, key))
                 if (modCount != mc) throw ConcurrentModificationException()
             }
         }
     }
 
-    inner class KeyIterator : RedisMapIterator(), MutableIterator<String> {
+    private inner class KeyIterator : RedisMapIterator(), MutableIterator<String> {
         override fun next(): String = nextNode().key
     }
 
-    inner class ValueIterator : RedisMapIterator(), MutableIterator<Int> {
+    private inner class ValueIterator : RedisMapIterator(), MutableIterator<Int> {
         override fun next(): Int = nextNode().value
     }
 
-    inner class EntryIterator : RedisMapIterator(), MutableIterator<MutableMap.MutableEntry<String, Int>> {
+    private inner class EntryIterator : RedisMapIterator(), MutableIterator<MutableMap.MutableEntry<String, Int>> {
         override fun next(): MutableMap.MutableEntry<String, Int> = nextNode()
     }
 }
