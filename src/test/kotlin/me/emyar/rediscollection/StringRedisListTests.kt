@@ -65,13 +65,15 @@ class StringRedisListTests {
         redisList shouldContainExactly testList.toMutableList().apply { addAll(newElements) }
     }
 
-    @Test
-    fun addAllAtPosition() {
+    @ParameterizedTest
+    @FieldSource("testList")
+    fun addAllAtPosition(element: String) {
+        val position = testList.indexOf(element)
         val redisList = StringRedisList(jedis, key)
         val newElements = listOf("newElement", "anotherElement")
-        redisList.addAll(1, newElements)
+        redisList.addAll(position, newElements)
 
-        redisList shouldContainExactly testList.toMutableList().apply { addAll(1, newElements) }
+        redisList shouldContainExactly testList.toMutableList().apply { addAll(position, newElements) }
     }
 
     @Test
