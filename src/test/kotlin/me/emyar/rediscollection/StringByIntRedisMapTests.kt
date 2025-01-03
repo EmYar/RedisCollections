@@ -10,7 +10,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.FieldSource
-import redis.clients.jedis.Jedis
+import redis.clients.jedis.UnifiedJedis
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
@@ -153,7 +153,7 @@ class StringByIntRedisMapTests {
     }
 
     companion object {
-        private val jedis = Jedis(redisContainer.redisHost, redisContainer.redisPort)
+        private val jedis = UnifiedJedis("redis://${redisContainer.redisHost}:${redisContainer.redisPort}")
 
         private val testMap = mapOf(
             "apples" to 879,
@@ -161,6 +161,7 @@ class StringByIntRedisMapTests {
             "tomatoes" to 482,
         )
 
+        @Suppress("unused")
         @JvmStatic
         private val testMapKeys = testMap.keys
 

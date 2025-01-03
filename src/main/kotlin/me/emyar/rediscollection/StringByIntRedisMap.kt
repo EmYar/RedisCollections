@@ -2,14 +2,14 @@
 
 package me.emyar.rediscollection
 
-import redis.clients.jedis.Jedis
+import redis.clients.jedis.UnifiedJedis
 import java.util.*
 import java.util.function.BiConsumer
 import java.util.function.Consumer
 import java.util.Collection as JvmCollection
 
 class StringByIntRedisMap(
-    private val jedis: Jedis,
+    var jedis: UnifiedJedis,
     private val redisKey: String,
 ) : AbstractMutableMap<String, Int>() {
 

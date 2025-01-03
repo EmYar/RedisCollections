@@ -2,13 +2,14 @@
 
 package me.emyar.rediscollection
 
-import redis.clients.jedis.Jedis
+import redis.clients.jedis.UnifiedJedis
 import redis.clients.jedis.params.LPosParams
 import java.util.*
+import kotlin.collections.Collection
 import java.util.Collection as JvmCollection
 
 class StringRedisList(
-    private val jedis: Jedis,
+    var jedis: UnifiedJedis,
     private val key: String,
 ) : AbstractList<String>(), RandomAccess {
 

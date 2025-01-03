@@ -2,13 +2,13 @@
 
 package me.emyar.rediscollection
 
-import redis.clients.jedis.Jedis
+import redis.clients.jedis.UnifiedJedis
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
 fun main(vararg args: String) {
     val redisUrl = args[0]
-    Jedis(redisUrl).use { jedis ->
+    UnifiedJedis(redisUrl).use { jedis ->
         val listId = Uuid.random().toString()
         val testList = listOf("Cat", "Dog", "Home", "Garage", "Lawn")
         val redisList = StringRedisList(jedis, listId)

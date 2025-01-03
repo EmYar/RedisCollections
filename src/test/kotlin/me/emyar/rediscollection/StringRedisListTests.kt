@@ -8,7 +8,7 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.FieldSource
-import redis.clients.jedis.Jedis
+import redis.clients.jedis.UnifiedJedis
 import kotlin.test.Test
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
@@ -222,7 +222,7 @@ class StringRedisListTests {
     }
 
     companion object {
-        private val jedis = Jedis(redisContainer.redisHost, redisContainer.redisPort)
+        private val jedis = UnifiedJedis("redis://${redisContainer.redisHost}:${redisContainer.redisPort}")
 
         @JvmStatic
         private val testList = listOf("Cat", "Dog", "Home", "Garage", "Lawn", "Fence", "Roof")
