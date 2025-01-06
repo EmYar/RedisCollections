@@ -1,0 +1,5 @@
+<root>
+    <item name='redis.clients.jedis.AbstractTransaction java.util.List&lt;java.lang.Object&gt; exec()'>
+        <annotation name='org.jetbrains.annotations.Nullable'/>
+    </item>
+</root>

@@ -22,11 +22,16 @@ class StringRedisList(
     }
 
     override fun set(index: Int, element: String): String {
-        checkBounds(index)
-        val oldValue = jedis.lindex(key, index.toLong())
-        jedis.lset(key, index.toLong(), element)
+        val oldValueResponse = jedis.transaction(false).use { transaction ->
+            transaction.watch(key)
+            transaction.multi()
+            val oldVal = transaction.lindex(key, index.toLong())
+            transaction.lset(key, index.toLong(), element)
+            transaction.exec()
+            return@use oldVal
+        }
         registerModification()
-        return oldValue
+        return oldValueResponse.get()
     }
 
     override fun add(element: String): Boolean {
