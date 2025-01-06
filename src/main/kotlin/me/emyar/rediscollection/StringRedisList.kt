@@ -1,14 +1,15 @@
 @file:Suppress("PLATFORM_CLASS_MAPPED_TO_KOTLIN")
+@file:OptIn(ExperimentalUuidApi::class)
 
 package me.emyar.rediscollection
 
 import redis.clients.jedis.UnifiedJedis
+import redis.clients.jedis.exceptions.JedisDataException
 import redis.clients.jedis.params.LPosParams
 import java.util.*
 import kotlin.collections.Collection
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
-import kotlin.time.TimeSource.Monotonic.markNow
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 import java.util.Collection as JvmCollection
@@ -16,7 +17,7 @@ import java.util.Collection as JvmCollection
 class StringRedisList(
     var jedis: UnifiedJedis,
     private val key: String,
-    private val retriesTimeout: Duration = 10.seconds
+    private val optLockRetriesTimeout: Duration = 10.seconds
 ) : AbstractList<String>(), RandomAccess {
 
     override val size: Int
@@ -27,28 +28,18 @@ class StringRedisList(
         return jedis.lindex(key, index.toLong())
     }
 
-    override fun set(index: Int, element: String): String {
-        val startMark = markNow()
-        do {
-            val result = doSet(index, element)
-            if (result != null) {
-                registerModification()
-                return result
-            }
-        } while (startMark.elapsedNow() < retriesTimeout)
-        throw WatchTimeoutException()
-    }
-
-    private fun doSet(index: Int, element: String): String? =
-        jedis.transaction(false).use { transaction ->
-            transaction.watch(key)
-            transaction.multi()
-            val oldVal = transaction.lindex(key, index.toLong())
-            transaction.lset(key, index.toLong(), element)
-            transaction.exec()
-                ?: return@use null
-            return@use oldVal
-        }?.get()
+    override fun set(index: Int, element: String): String =
+        checkOutOfBounds(index) {
+            jedis.optimisticLockTransaction(
+                key = key,
+                timeout = optLockRetriesTimeout,
+                onSuccess = ::registerModification,
+                block = { t ->
+                    t.lindex(key, index.toLong())
+                        .also { t.lset(key, index.toLong(), element) }
+                },
+            )
+        }
 
     override fun add(element: String): Boolean {
         jedis.rpush(key, element)
@@ -62,7 +53,6 @@ class StringRedisList(
 
     override fun addAll(elements: Collection<String>): Boolean {
         registerModification()
-        jedis.rpush(key, *elements.toTypedArray())
         return true
     }
 
@@ -72,30 +62,34 @@ class StringRedisList(
     }
 
     override fun addFirst(e: String) {
-        registerModification()
         jedis.lpush(key, e)
+        registerModification()
     }
 
     override fun addLast(e: String) {
-        registerModification()
         jedis.rpush(key, e)
+        registerModification()
     }
 
     override fun remove(element: String): Boolean {
-        registerModification()
         jedis.lrem(key, 1, element)
+        registerModification()
         return true
     }
 
     override fun removeAt(index: Int): String {
-        checkBounds(index)
-        val size = size
-        return when {
-            index == 0 -> jedis.lpop(key)
-            index == size - 1 -> jedis.rpop(key)
-            index <= size / 2 -> removeLeft(index)
-            else -> removeRight(index)
-        }.also { registerModification() }
+        val removedReplacer = Uuid.random().toString()
+        return checkOutOfBounds(index) {
+            jedis.optimisticLockTransaction(
+                key = key,
+                timeout = optLockRetriesTimeout,
+                onSuccess = ::registerModification,
+                block = { t ->
+                    t.lset(key, index.toLong(), removedReplacer)
+                        .also { t.lrem(key, 1L, removedReplacer) }
+                },
+            )
+        }
     }
 
     override fun removeLast(): String =
@@ -201,3 +195,17 @@ class StringRedisList(
         modCount++
     }
 }
+
+private inline fun <T> checkOutOfBounds(index: Int, block: () -> T): T =
+    try {
+        block()
+    } catch (e: JedisDataException) {
+        if (e.isIndexOutOfBounds()) {
+            throw IndexOutOfBoundsException("Index $index out of range")
+        } else {
+            throw e
+        }
+    }
+
+private fun JedisDataException.isIndexOutOfBounds() =
+    message == "ERR index out of range"
