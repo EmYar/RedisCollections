@@ -9,7 +9,6 @@ import kotlin.time.TimeSource.Monotonic.markNow
 inline fun <T> UnifiedJedis.optimisticLockTransaction(
     key: String,
     timeout: Duration,
-    onSuccess: () -> Unit,
     block: (AbstractTransaction) -> Response<T>,
 ): T {
     val startMark = markNow()
@@ -23,7 +22,6 @@ inline fun <T> UnifiedJedis.optimisticLockTransaction(
             result.get()
         }
         if (result != null) {
-            onSuccess()
             return result
         }
     } while (startMark.elapsedNow() < timeout)

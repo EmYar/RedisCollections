@@ -30,20 +30,16 @@ class StringRedisList(
 
     override fun set(index: Int, element: String): String =
         checkOutOfBounds(index) {
-            jedis.optimisticLockTransaction(
-                key = key,
-                timeout = optLockRetriesTimeout,
-                onSuccess = ::registerModification,
-                block = { t ->
-                    t.lindex(key, index.toLong())
-                        .also { t.lset(key, index.toLong(), element) }
-                },
-            )
+            registerModification()
+            jedis.optimisticLockTransaction(key, optLockRetriesTimeout) { t ->
+                t.lindex(key, index.toLong())
+                    .also { t.lset(key, index.toLong(), element) }
+            }
         }
 
     override fun add(element: String): Boolean {
-        jedis.rpush(key, element)
         registerModification()
+        jedis.rpush(key, element)
         return true
     }
 
@@ -53,6 +49,7 @@ class StringRedisList(
 
     override fun addAll(elements: Collection<String>): Boolean {
         registerModification()
+        jedis.rpush(key, *elements.toTypedArray())
         return true
     }
 
@@ -62,33 +59,29 @@ class StringRedisList(
     }
 
     override fun addFirst(e: String) {
-        jedis.lpush(key, e)
         registerModification()
+        jedis.lpush(key, e)
     }
 
     override fun addLast(e: String) {
-        jedis.rpush(key, e)
         registerModification()
+        jedis.rpush(key, e)
     }
 
     override fun remove(element: String): Boolean {
-        jedis.lrem(key, 1, element)
         registerModification()
+        jedis.lrem(key, 1, element)
         return true
     }
 
     override fun removeAt(index: Int): String {
         val removedReplacer = Uuid.random().toString()
         return checkOutOfBounds(index) {
-            jedis.optimisticLockTransaction(
-                key = key,
-                timeout = optLockRetriesTimeout,
-                onSuccess = ::registerModification,
-                block = { t ->
-                    t.lset(key, index.toLong(), removedReplacer)
-                        .also { t.lrem(key, 1L, removedReplacer) }
-                },
-            )
+            registerModification()
+            jedis.optimisticLockTransaction(key, optLockRetriesTimeout) { t ->
+                t.lset(key, index.toLong(), removedReplacer)
+                    .also { t.lrem(key, 1L, removedReplacer) }
+            }
         }
     }
 
