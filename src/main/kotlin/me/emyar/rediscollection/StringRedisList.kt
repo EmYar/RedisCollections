@@ -6,11 +6,17 @@ import redis.clients.jedis.UnifiedJedis
 import redis.clients.jedis.params.LPosParams
 import java.util.*
 import kotlin.collections.Collection
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.TimeSource.Monotonic.markNow
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 import java.util.Collection as JvmCollection
 
 class StringRedisList(
     var jedis: UnifiedJedis,
     private val key: String,
+    private val retriesTimeout: Duration = 10.seconds
 ) : AbstractList<String>(), RandomAccess {
 
     override val size: Int
@@ -22,17 +28,26 @@ class StringRedisList(
     }
 
     override fun set(index: Int, element: String): String {
-        val oldValueResponse = jedis.transaction(false).use { transaction ->
+        val startMark = markNow()
+        do {
+            val result = doSet(index, element)
+            if (result != null) {
+                return result
+            }
+        } while (startMark.elapsedNow() < retriesTimeout)
+        throw WatchTimeoutException()
+    }
+
+    private fun doSet(index: Int, element: String): String? =
+        jedis.transaction(false).use { transaction ->
             transaction.watch(key)
             transaction.multi()
             val oldVal = transaction.lindex(key, index.toLong())
             transaction.lset(key, index.toLong(), element)
             transaction.exec()
+                ?: return@use null
             return@use oldVal
-        }
-        registerModification()
-        return oldValueResponse.get()
-    }
+        }?.get()
 
     override fun add(element: String): Boolean {
         jedis.rpush(key, element)
