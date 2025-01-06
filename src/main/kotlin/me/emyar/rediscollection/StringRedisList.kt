@@ -32,6 +32,7 @@ class StringRedisList(
         do {
             val result = doSet(index, element)
             if (result != null) {
+                registerModification()
                 return result
             }
         } while (startMark.elapsedNow() < retriesTimeout)
