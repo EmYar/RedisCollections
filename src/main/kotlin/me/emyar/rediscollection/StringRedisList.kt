@@ -23,19 +23,19 @@ class StringRedisList(
     override val size: Int
         get() = jedis.llen(key).toInt()
 
-    override fun get(index: Int): String {
-        checkBounds(index)
-        return jedis.lindex(key, index.toLong())
-    }
+    override fun get(index: Int): String =
+        jedis.lindex(key, index.toLong())
+            ?: throw IndexOutOfBoundsException("Index $index is out of bounds")
 
-    override fun set(index: Int, element: String): String =
-        checkOutOfBounds(index) {
-            registerModification()
-            jedis.optimisticLockTransaction(key, optLockRetriesTimeout) { t ->
-                t.lindex(key, index.toLong())
-                    .also { t.lset(key, index.toLong(), element) }
-            }
+    override fun set(index: Int, element: String): String {
+        registerModification()
+        return jedis.optimisticLockTransaction(key, optLockRetriesTimeout) { t ->
+            val oldValue = t.lindex(key, index.toLong())
+                ?: throw IndexOutOfBoundsException("Index $index is out of bounds")
+            t.lset(key, index.toLong(), element)
+            oldValue
         }
+    }
 
     override fun add(element: String): Boolean {
         registerModification()
@@ -135,52 +135,16 @@ class StringRedisList(
             .toArray(a)
 
     private fun addAtPosition(index: Int, elements: Collection<String>) {
-        rangeCheckForAdd(index)
-        val size = size
-        when {
-            index == 0 -> jedis.lpush(key, *elements.reversed().toTypedArray())
-            index == size -> addAll(elements)
-            index <= size / 2 -> addLeft(index, elements)
-            else -> addRight(index, elements)
-        }
         registerModification()
-    }
-
-    private fun addLeft(index: Int, elements: Collection<String>) {
-        val head = jedis.lpop(key, index)
-        jedis.lpush(key, *elements.reversed().toTypedArray())
-        jedis.lpush(key, *head.reversed().toTypedArray())
-    }
-
-    private fun addRight(index: Int, elements: Collection<String>) {
-        val tail = jedis.rpop(key, size - index).reversed()
-        jedis.rpush(key, *elements.toTypedArray())
-        jedis.rpush(key, *tail.toTypedArray())
-    }
-
-    private fun removeLeft(index: Int): String {
-        val head = jedis.lpop(key, index)
-        val removed = jedis.lpop(key)
-        jedis.lpush(key, *head.reversed().toTypedArray())
-        return removed
-    }
-
-    private fun removeRight(index: Int): String {
-        val tail = jedis.rpop(key, size - 1 - index).reversed()
-        val removed = jedis.rpop(key)
-        jedis.rpush(key, *tail.toTypedArray())
-        return removed
-    }
-
-    private fun checkBounds(index: Int) {
-        if (index < 0 || index >= size) {
-            throw IndexOutOfBoundsException("Index: $index, Size: $size")
+        val result = jedis.eval(
+            InsertElementsToListInPositionScript.text,
+            listOf(key),
+            listOf((index + 1).toString()) + elements,
+        ).let { resultObj ->
+            InsertElementsToListInPositionScript.Result.valueOf(resultObj as String)
         }
-    }
-
-    private fun rangeCheckForAdd(index: Int) {
-        if (index < 0 || index > size) {
-            throw IndexOutOfBoundsException("Index: $index, Size: $size")
+        if (result === InsertElementsToListInPositionScript.Result.INDEX_OUT_OF_BOUNDS) {
+            throw IndexOutOfBoundsException("Index $index is out of bounds")
         }
     }
 

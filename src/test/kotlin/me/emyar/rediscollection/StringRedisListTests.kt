@@ -1,5 +1,6 @@
 package me.emyar.rediscollection
 
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.*
 import io.kotest.matchers.equals.shouldBeEqual
 import io.kotest.matchers.shouldBe
@@ -74,6 +75,14 @@ class StringRedisListTests {
         redisList.addAll(position, newElements)
 
         redisList shouldContainExactly testList.toMutableList().apply { addAll(position, newElements) }
+    }
+
+    @ParameterizedTest
+    @FieldSource("indexesOutOfBounds")
+    fun addAllAtPositionIOB(position: Int) {
+        shouldThrow<IndexOutOfBoundsException> {
+            StringRedisList(jedis, key).add(position, "newElement")
+        }
     }
 
     @Test
@@ -226,6 +235,9 @@ class StringRedisListTests {
 
         @JvmStatic
         private val testList = listOf("Cat", "Dog", "Home", "Garage", "Lawn", "Fence", "Roof")
+
+        @JvmStatic
+        private val indexesOutOfBounds = listOf(-1, testList.size)
 
         @JvmStatic
         @AfterAll
