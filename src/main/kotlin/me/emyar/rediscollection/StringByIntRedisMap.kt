@@ -6,11 +6,15 @@ import redis.clients.jedis.UnifiedJedis
 import java.util.*
 import java.util.function.BiConsumer
 import java.util.function.Consumer
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
 import java.util.Collection as JvmCollection
 
 class StringByIntRedisMap(
+
     var jedis: UnifiedJedis,
     private val redisKey: String,
+    private val optLockRetriesTimeout: Duration = 10.seconds
 ) : AbstractMutableMap<String, Int>() {
 
     @Transient
@@ -42,29 +46,31 @@ class StringByIntRedisMap(
         jedis.hlen(redisKey) == 0L
 
     override fun remove(key: String): Int? {
-        val value = get(key)
-        if (value != null) {
-            jedis.hdel(redisKey, key)
-            modCount++
-        }
-        return value
+        modCount++
+        return jedis.optimisticLockTransaction(redisKey, optLockRetriesTimeout) { t ->
+            t.hget(redisKey, key).also {
+                t.hdel(redisKey, key)
+            }
+        }?.toInt()
     }
 
     override fun put(key: String, value: Int): Int? {
-        val previous = jedis.hget(redisKey, value.toString())?.toInt()
-        jedis.hset(redisKey, key, value.toString())
         modCount++
-        return previous
+        return jedis.optimisticLockTransaction(redisKey, optLockRetriesTimeout) { t ->
+            t.hget(redisKey, value.toString()).also {
+                t.hset(redisKey, key, value.toString())
+            }
+        }?.toInt()
     }
 
     override fun putAll(from: Map<out String, Int>) {
-        jedis.hset(redisKey, from.mapValues { (_, value) -> value.toString() })
         modCount++
+        jedis.hset(redisKey, from.mapValues { (_, value) -> value.toString() })
     }
 
     override fun clear() {
-        jedis.del(redisKey)
         modCount++
+        jedis.del(redisKey)
     }
 
     override fun forEach(action: BiConsumer<in String, in Int>) {

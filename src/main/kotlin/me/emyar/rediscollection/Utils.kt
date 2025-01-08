@@ -13,16 +13,13 @@ inline fun <T> UnifiedJedis.optimisticLockTransaction(
 ): T {
     val startMark = markNow()
     do {
-        val result = transaction(false).use { transaction ->
+        transaction(false).use { transaction ->
             transaction.watch(key)
             transaction.multi()
             val result = block(transaction)
-            transaction.exec()
-                ?: return@use null
-            result.get()
-        }
-        if (result != null) {
-            return result
+            if (transaction.exec() != null) {
+                return result.get()
+            }
         }
     } while (startMark.elapsedNow() < timeout)
     throw WatchTimeoutException()
