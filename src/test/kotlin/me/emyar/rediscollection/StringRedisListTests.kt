@@ -230,12 +230,27 @@ class StringRedisListTests {
         StringRedisList(jedis, key) shouldContainExactly testList
     }
 
+    @Test
+    fun sort() {
+        val redisList = StringRedisList(jedis, key)
+        redisList.sort()
+        redisList shouldContainExactly testList.toMutableList().apply { sort() }
+    }
+
+    @Test
+    fun customOrderSortUnsupported() {
+        shouldThrow<UnsupportedOperationException> {
+            StringRedisList(jedis, key).sortWith(Comparator.reverseOrder())
+        }
+    }
+
     companion object {
         private val jedis = UnifiedJedis("redis://${redisContainer.redisHost}:${redisContainer.redisPort}")
 
         @JvmStatic
         private val testList = listOf("Cat", "Dog", "Home", "Garage", "Lawn", "Fence", "Roof")
 
+        @Suppress("unused")
         @JvmStatic
         private val indexesOutOfBounds = listOf(-1, testList.size)
 

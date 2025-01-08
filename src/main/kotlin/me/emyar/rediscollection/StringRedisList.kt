@@ -6,6 +6,7 @@ package me.emyar.rediscollection
 import redis.clients.jedis.UnifiedJedis
 import redis.clients.jedis.exceptions.JedisDataException
 import redis.clients.jedis.params.LPosParams
+import redis.clients.jedis.params.SortingParams
 import java.util.*
 import kotlin.collections.Collection
 import kotlin.time.Duration
@@ -113,14 +114,11 @@ class StringRedisList(
     }
 
     override fun sort(c: Comparator<in String>?) {
-        registerModification()
         if (c == null) {
-            jedis.sort(key)
+            registerModification()
+            jedis.sort(key, SortingParams().alpha(), key)
         } else {
-            val values = jedis.lrange(key, 0, -1).toMutableList()
-            jedis.del(key)
-            values.sortWith(c)
-            jedis.rpush(key, *values.toTypedArray())
+            throw UnsupportedOperationException("Sorting with a custom comparator is not supported")
         }
     }
 
