@@ -1,0 +1,1 @@
+Unit tests use Testcontainers to run Redis, so Docker is required to run them
