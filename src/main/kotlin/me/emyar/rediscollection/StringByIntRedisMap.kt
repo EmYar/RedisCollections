@@ -11,7 +11,6 @@ import kotlin.time.Duration.Companion.seconds
 import java.util.Collection as JvmCollection
 
 class StringByIntRedisMap(
-
     var jedis: UnifiedJedis,
     private val redisKey: String,
     private val optLockRetriesTimeout: Duration = 10.seconds

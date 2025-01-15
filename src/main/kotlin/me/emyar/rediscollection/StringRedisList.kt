@@ -19,7 +19,7 @@ class StringRedisList(
     var jedis: UnifiedJedis,
     private val key: String,
     private val optLockRetriesTimeout: Duration = 10.seconds
-) : AbstractList<String>(), RandomAccess {
+) : AbstractList<String>() {
 
     override val size: Int
         get() = jedis.llen(key).toInt()
